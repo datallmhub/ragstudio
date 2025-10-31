@@ -1,0 +1,197 @@
+# Atlas-RAG Configuration Example
+# Copy this file to ~/.atlasrag/config.yml or specify with --config flag
+#
+# Configuration hierarchy (highest priority first):
+#   1. CLI flags (--use-llm, --llm-url, etc.)
+#   2. Environment variables (ATLAS_USE_LLM, ATLAS_LLM_URL, etc.)
+#   3. This config file
+#   4. Default values
+
+# ========================================
+# LLM Configuration
+# ========================================
+llm:
+  # Enable LLM for text correction and analysis
+  use_llm: false
+
+  # Provider: ollama (local), openai (remote), anthropic (remote)
+  provider: ollama
+
+  # API URL (auto-detected for each provider if not specified)
+  # - Ollama: http://localhost:11434
+  # - OpenAI: https://api.openai.com/v1
+  # - Anthropic: https://api.anthropic.com/v1
+  url: http://localhost:11434
+
+  # API Key (required for remote providers, not needed for local Ollama)
+  # Can also use environment variables: OPENAI_API_KEY or ANTHROPIC_API_KEY
+  api_key: null
+
+  # Model name
+  model: mistral:latest  # For Ollama: mistral:latest, llama3:latest, etc.
+  # model: gpt-4o-mini   # For OpenAI
+  # model: claude-3-haiku-20240307  # For Anthropic
+
+  # Request timeout (seconds)
+  timeout: 60
+
+  # Maximum tokens per request
+  max_tokens: 4096
+
+  # Generation temperature (0.0 = deterministic, 2.0 = creative)
+  temperature: 0.1
+
+# ========================================
+# OCR Configuration
+# ========================================
+ocr:
+  # Enable intelligent OCR routing (auto-selects best engine)
+  use_advanced_ocr: false
+
+  # Dictionary ratio threshold (% of real French/English words)
+  # < threshold = LOW quality → Qwen-VL advanced OCR
+  # ≥ threshold = HIGH quality → Classic OCR (faster)
+  # Default: 0.30 (30% real words)
+  dictionary_threshold: 0.30
+
+  # Enable dynamic threshold adjustment
+  # Adjusts threshold based on:
+  #   - Detected language (French: -5%, English: +5%)
+  #   - Text length (< 500 chars: +5%, > 2000 chars: -5%)
+  dynamic_threshold: true
+
+  # Enable fallback to classic OCR on advanced OCR failures
+  enable_fallback: true
+
+  # Qwen-VL (Vision-Language Model) settings
+  qwen_vl_url: http://localhost:11434
+  qwen_vl_model: qwen/qwen2.5-vl-7b
+  qwen_vl_max_tokens: 16384
+  qwen_vl_timeout: 120
+
+  # Classic OCR engine (fallback)
+  classic_ocr_engine: unstructured  # Options: unstructured, tesseract, pdfminer
+  tesseract_languages: fra+eng
+
+# ========================================
+# Chunking Configuration
+# ========================================
+chunking:
+  # Chunking strategy
+  strategy: semantic  # Options: semantic, sentence, token
+
+  # Maximum tokens per chunk
+  max_tokens: 400
+
+  # Token overlap between chunks
+  overlap: 50
+
+  # Model for tokenization (used to count tokens)
+  model: gpt-3.5-turbo
+
+# ========================================
+# Output Configuration
+# ========================================
+output:
+  # Output format
+  format: json  # Options: json, jsonl, yaml
+
+  # Include metadata in output
+  include_metadata: true
+
+  # Pretty print JSON
+  pretty_print: true
+
+  # Generate processing summary (JSON)
+  generate_summary: true
+
+# ========================================
+# Global Settings
+# ========================================
+
+# Log level
+log_level: INFO  # Options: DEBUG, INFO, WARNING, ERROR
+
+# ========================================
+# Usage Examples
+# ========================================
+#
+# Example 1: Local LLM + Advanced OCR
+# --------------------------------------
+# llm:
+#   use_llm: true
+#   provider: ollama
+#   url: http://localhost:11434
+#   model: mistral:latest
+#
+# ocr:
+#   use_advanced_ocr: true
+#   dictionary_threshold: 0.25
+#
+# chunking:
+#   strategy: semantic
+#   max_tokens: 500
+#
+#
+# Example 2: Remote OpenAI + Classic OCR
+# ----------------------------------------
+# llm:
+#   use_llm: true
+#   provider: openai
+#   api_key: sk-...  # Or use OPENAI_API_KEY env var
+#   model: gpt-4o-mini
+#
+# ocr:
+#   use_advanced_ocr: false
+#   classic_ocr_engine: tesseract
+#
+#
+# Example 3: No LLM + Advanced OCR (Recommended for scanned docs)
+# -----------------------------------------------------------------
+# llm:
+#   use_llm: false
+#
+# ocr:
+#   use_advanced_ocr: true
+#   dictionary_threshold: 0.30
+#   dynamic_threshold: true
+#
+# chunking:
+#   strategy: semantic
+#   max_tokens: 400
+#
+# ========================================
+# Environment Variables (Alternative to this file)
+# ========================================
+#
+# All settings can be set via environment variables:
+#
+# ATLAS_USE_LLM=true
+# ATLAS_LLM_PROVIDER=ollama
+# ATLAS_LLM_URL=http://localhost:11434
+# ATLAS_LLM_MODEL=mistral:latest
+#
+# ATLAS_USE_ADVANCED_OCR=true
+# ATLAS_OCR_DICTIONARY_THRESHOLD=0.30
+# ATLAS_OCR_DYNAMIC_THRESHOLD=true
+#
+# ATLAS_CHUNK_STRATEGY=semantic
+# ATLAS_CHUNK_MAX_TOKENS=400
+# ATLAS_CHUNK_OVERLAP=50
+#
+# ATLAS_LOG_LEVEL=INFO
+#
+# ========================================
+# CLI Flags (Highest Priority)
+# ========================================
+#
+# All settings can be overridden via CLI flags:
+#
+# atlas-rag chunk document.pdf \
+#   --use-llm \
+#   --llm-url http://localhost:11434 \
+#   --llm-model mistral:latest \
+#   --use-advanced-ocr \
+#   --ocr-threshold 0.25 \
+#   --max-tokens 500 \
+#   --show

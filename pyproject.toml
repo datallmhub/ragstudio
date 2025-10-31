@@ -1,0 +1,268 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ragctl"
+version = "0.1.3"
+description = "RAG Studio - Production-ready RAG toolkit with advanced OCR, semantic chunking, and intelligent document processing"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = "MIT"
+authors = [
+    {name = "Horiz Data", email = "sekkaahmed@gmail.com"}
+]
+maintainers = [
+    {name = "Horiz Data", email = "sekkaahmed@gmail.com"}
+]
+keywords = [
+    "rag",
+    "document-processing",
+    "ocr",
+    "chunking",
+    "nlp",
+    "machine-learning",
+    "embeddings",
+    "semantic-search"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    # Document Loading & Processing
+    "unstructured[pdf,docx,odt,image]>=0.10.0",  # Universal document loader with OCR support
+    "python-docx>=1.0.0",  # DOCX processing
+    "beautifulsoup4>=4.12.0",  # HTML processing
+    "pymupdf>=1.23.0",  # PyMuPDF: Fast PDF extraction
+    "pdfplumber>=0.10.0",  # PDF extraction with table support
+    "pdf2image>=1.16.0",  # Convert PDF pages to images for OCR
+
+    # Text Chunking (v3.0 LangChain-based)
+    "langchain>=1.0.0",  # Text splitters for clean chunking
+    "langchain-text-splitters>=1.0.0",  # Modular text splitters
+    "langchain-community>=0.4.0",  # Community integrations & document loaders
+    "chonkie>=1.0.0",  # Legacy: kept for fallback compatibility
+
+    # OCR Engines
+    "easyocr>=1.7.0",  # Primary OCR with excellent multi-language support
+    "pytesseract>=0.3.10",  # Fallback OCR engine
+    "pillow>=10.0.0",  # Image processing for OCR
+
+    # Text Processing & Analysis
+    "langdetect>=1.0.9",  # Language detection
+    "spacy>=3.7.0",  # NLP processing
+    "tiktoken>=0.5.0",  # Tokenization
+
+    # Machine Learning
+    "transformers>=4.44.0",  # HuggingFace transformers
+    "datasets>=2.20.0",  # HuggingFace datasets
+    "sentence-transformers>=2.2.0",  # Sentence embeddings
+    "scikit-learn>=1.5.0",  # ML utilities
+    "torch>=2.2.0",  # PyTorch backend
+    "joblib>=1.3.0",  # Model serialization
+
+    # Data Processing
+    "pandas>=2.0.0",  # Data manipulation
+    "numpy>=1.26.0,<2.0",  # NumPy 1.x for compatibility
+    "scipy>=1.13.0",  # Scientific computing
+
+    # CLI Framework
+    "typer[all]>=0.12.0",  # Modern CLI framework
+    "rich>=13.0.0",  # Beautiful CLI output
+
+    # Vector Database
+    "qdrant-client>=1.7.0",  # Vector database for embeddings storage
+    "langchain-qdrant>=0.1.0",  # LangChain Qdrant integration
+
+    # Utilities
+    "psutil>=5.9.0",  # System utilities
+    "requests>=2.31.0",  # HTTP client
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.12.0",
+    "pytest-env>=1.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "flake8>=7.0.0",
+    "mypy>=1.7.0",
+    "isort>=5.12.0",
+    "safety>=3.0.0",
+    "bandit>=1.7.0",
+    "pre-commit>=3.5.0",
+]
+
+ocr-advanced = [
+    "easyocr>=1.7.0",
+    "paddleocr>=2.7.0",
+]
+
+llm = [
+    "openai>=1.0.0",
+    "anthropic>=0.7.0",
+    "ollama>=0.1.0",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/horiz-data/ragstudio"
+Documentation = "https://github.com/horiz-data/ragstudio/tree/main/docs"
+Repository = "https://github.com/horiz-data/ragstudio"
+Issues = "https://github.com/horiz-data/ragstudio/issues"
+Changelog = "https://github.com/horiz-data/ragstudio/blob/main/CHANGELOG.md"
+
+[project.scripts]
+ragctl = "src.core.cli.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+exclude = ["tests*", "*.tests*"]
+
+[tool.setuptools.package-data]
+src = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+    "-ra",
+    "--cov=src/core",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml:coverage.xml",
+    "--cov-branch",
+    "--cov-fail-under=17",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "slow: Slow tests",
+    "requires_gpu: Tests requiring GPU",
+    "requires_ollama: Tests requiring Ollama",
+]
+
+[tool.coverage.run]
+source = ["src/core"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv_unstructured
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused imports in __init__.py
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "unstructured.*",
+    "chonkie.*",
+    "langdetect.*",
+    "pdfplumber.*",
+    "pytesseract.*",
+]
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = [
+    "*.git*",
+    "*venv*",
+    "build",
+    "dist",
+]

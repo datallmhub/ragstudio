@@ -1,0 +1,152 @@
+# Gitleaks configuration for AI/ML projects
+# https://github.com/gitleaks/gitleaks
+
+title = "RAG Studio - AI/ML Secrets Detection"
+
+[extend]
+useDefault = true
+
+# OpenAI API Keys
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{20,}T3BlbkFJ[a-zA-Z0-9]{20,}'''
+tags = ["openai", "api-key", "ai"]
+
+[[rules]]
+id = "openai-api-key-project"
+description = "OpenAI Project API Key"
+regex = '''sk-proj-[a-zA-Z0-9_-]{43,}'''
+tags = ["openai", "api-key", "ai"]
+
+# Anthropic (Claude) API Keys
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic Claude API Key"
+regex = '''sk-ant-api03-[a-zA-Z0-9_-]{95,}'''
+tags = ["anthropic", "claude", "api-key", "ai"]
+
+# HuggingFace Tokens
+[[rules]]
+id = "huggingface-token"
+description = "HuggingFace Access Token"
+regex = '''hf_[a-zA-Z0-9]{34,}'''
+tags = ["huggingface", "token", "ai", "ml"]
+
+# Google AI (Gemini, PaLM)
+[[rules]]
+id = "google-ai-key"
+description = "Google AI API Key"
+regex = '''AIza[0-9A-Za-z_-]{35}'''
+tags = ["google", "gemini", "palm", "api-key", "ai"]
+
+# Cohere API Keys
+[[rules]]
+id = "cohere-api-key"
+description = "Cohere API Key"
+regex = '''[a-zA-Z0-9]{40}-[a-zA-Z0-9]{40}'''
+tags = ["cohere", "api-key", "ai"]
+
+# AWS Credentials (important for SageMaker, Bedrock)
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws", "sagemaker", "bedrock", "cloud"]
+
+# Azure OpenAI
+[[rules]]
+id = "azure-openai-key"
+description = "Azure OpenAI API Key"
+regex = '''[a-f0-9]{32}'''
+tags = ["azure", "openai", "api-key"]
+[rules.allowlist]
+regexes = [
+  '''[a-f0-9]{32}''', # Too generic, needs context
+]
+
+# Pinecone API Keys (vector DB)
+[[rules]]
+id = "pinecone-api-key"
+description = "Pinecone API Key"
+regex = '''[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'''
+tags = ["pinecone", "vector-db", "api-key"]
+
+# Qdrant API Keys
+[[rules]]
+id = "qdrant-api-key"
+description = "Qdrant API Key"
+regex = '''[a-zA-Z0-9_-]{32,}'''
+tags = ["qdrant", "vector-db", "api-key"]
+
+# Weaviate API Keys
+[[rules]]
+id = "weaviate-api-key"
+description = "Weaviate API Key"
+regex = '''[a-zA-Z0-9_-]{32,64}'''
+tags = ["weaviate", "vector-db", "api-key"]
+
+# Langsmith API Keys (LangChain tracing)
+[[rules]]
+id = "langsmith-api-key"
+description = "LangSmith API Key"
+regex = '''ls__[a-f0-9]{32}'''
+tags = ["langsmith", "langchain", "api-key"]
+
+# Weights & Biases
+[[rules]]
+id = "wandb-api-key"
+description = "Weights & Biases API Key"
+regex = '''[a-f0-9]{40}'''
+tags = ["wandb", "mlops", "api-key"]
+
+# MLflow
+[[rules]]
+id = "mlflow-token"
+description = "MLflow Tracking Token"
+regex = '''mlflow_[a-zA-Z0-9]{32,}'''
+tags = ["mlflow", "mlops", "token"]
+
+# Replicate API Tokens
+[[rules]]
+id = "replicate-token"
+description = "Replicate API Token"
+regex = '''r8_[a-zA-Z0-9]{32,}'''
+tags = ["replicate", "api-token", "ai"]
+
+# Allowlist - False positives communs
+[allowlist]
+description = "Allowlist for common false positives"
+paths = [
+  '''.venv/''',
+  '''node_modules/''',
+  '''dist/''',
+  '''build/''',
+  '''*.egg-info/''',
+  '''htmlcov/''',
+  '''.pytest_cache/''',
+  '''__pycache__/''',
+  '''.git/''',
+  '''tests/fixtures/''',
+  '''tests/data/''',
+]
+
+regexes = [
+  '''(sk-example|sk-test|sk-demo|sk-fake)''',
+  '''example\.com''',
+  '''localhost''',
+  '''127\.0\.0\.1''',
+  '''0\.0\.0\.0''',
+  '''YOUR_API_KEY''',
+  '''REPLACE_ME''',
+  '''TODO''',
+  '''FIXME''',
+]
+
+# Exclusions pour les fichiers de test
+[[rules.allowlist]]
+paths = [
+  '''tests/.*''',
+  '''.*_test\.py''',
+  '''test_.*\.py''',
+]

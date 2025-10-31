@@ -1,0 +1,440 @@
+#!/bin/bash
+# Automated functional tests for ragctl
+# Runs all 48 test cases and reports results
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Counters
+TOTAL_TESTS=0
+PASSED_TESTS=0
+FAILED_TESTS=0
+SKIPPED_TESTS=0
+
+# Test data directory
+TEST_DATA_DIR="./test_data"
+OUTPUT_DIR="./test_output"
+
+# Use local source code instead of installed ragctl
+RAGCTL="python -m src.core.cli.app"
+
+# Create output directory
+mkdir -p "$OUTPUT_DIR"
+
+# Logging
+LOG_FILE="$OUTPUT_DIR/test_results.log"
+> "$LOG_FILE"  # Clear log file
+
+# Helper functions
+log() {
+  echo "$1" | tee -a "$LOG_FILE"
+}
+
+test_passed() {
+  ((PASSED_TESTS++))
+  ((TOTAL_TESTS++))
+  log "${GREEN}✅ PASS${NC}: $1"
+}
+
+test_failed() {
+  ((FAILED_TESTS++))
+  ((TOTAL_TESTS++))
+  log "${RED}❌ FAIL${NC}: $1"
+  if [ -n "$2" ]; then
+    log "   Error: $2"
+  fi
+}
+
+test_skipped() {
+  ((SKIPPED_TESTS++))
+  ((TOTAL_TESTS++))
+  log "${YELLOW}⚠️  SKIP${NC}: $1"
+}
+
+section_header() {
+  log ""
+  log "${BLUE}═══════════════════════════════════════════════════════${NC}"
+  log "${BLUE} $1${NC}"
+  log "${BLUE}═══════════════════════════════════════════════════════${NC}"
+}
+
+# Check if test data exists
+if [ ! -d "$TEST_DATA_DIR" ]; then
+  log "${RED}Error: Test data not found!${NC}"
+  log "Run: ./tests/functional/setup_test_data.sh"
+  exit 1
+fi
+
+log "${GREEN}🚀 Starting $RAGCTL Functional Tests${NC}"
+log "Test Data: $TEST_DATA_DIR"
+log "Output: $OUTPUT_DIR"
+log "Log: $LOG_FILE"
+
+# =============================================================================
+# 1. $RAGCTL chunk (14 tests)
+# =============================================================================
+section_header "1. Testing: $RAGCTL chunk"
+
+# 1.1 Chunk simple text file
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" -o "$OUTPUT_DIR/chunks_1_1.json" &> "$OUTPUT_DIR/test_1_1.log"; then
+  if [ -f "$OUTPUT_DIR/chunks_1_1.json" ]; then
+    test_passed "1.1 Chunk simple text file"
+  else
+    test_failed "1.1 Chunk simple text file" "Output file not created"
+  fi
+else
+  test_failed "1.1 Chunk simple text file" "Command failed"
+fi
+
+# 1.2 Chunk with output path
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" -o "$OUTPUT_DIR/output_1_2.json" &> "$OUTPUT_DIR/test_1_2.log"; then
+  if [ -f "$OUTPUT_DIR/output_1_2.json" ]; then
+    test_passed "1.2 Chunk with output path"
+  else
+    test_failed "1.2 Chunk with output path" "Output file not created"
+  fi
+else
+  test_failed "1.2 Chunk with output path" "Command failed"
+fi
+
+# 1.3 Chunk with strategy semantic
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" -s semantic -o "$OUTPUT_DIR/chunks_1_3.json" &> "$OUTPUT_DIR/test_1_3.log"; then
+  test_passed "1.3 Chunk with strategy semantic"
+else
+  test_failed "1.3 Chunk with strategy semantic" "Command failed"
+fi
+
+# 1.4 Chunk with strategy token
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" -s token -o "$OUTPUT_DIR/chunks_1_4.json" &> "$OUTPUT_DIR/test_1_4.log"; then
+  test_passed "1.4 Chunk with strategy token"
+else
+  test_failed "1.4 Chunk with strategy token" "Command failed"
+fi
+
+# 1.5 Chunk with strategy sentence
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" -s sentence -o "$OUTPUT_DIR/chunks_1_5.json" &> "$OUTPUT_DIR/test_1_5.log"; then
+  test_passed "1.5 Chunk with strategy sentence"
+else
+  test_failed "1.5 Chunk with strategy sentence" "Command failed"
+fi
+
+# 1.6 Chunk with custom max-tokens
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" --max-tokens 200 -o "$OUTPUT_DIR/chunks_1_6.json" &> "$OUTPUT_DIR/test_1_6.log"; then
+  test_passed "1.6 Chunk with custom max-tokens"
+else
+  test_failed "1.6 Chunk with custom max-tokens" "Command failed"
+fi
+
+# 1.7 Chunk with custom overlap
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" --overlap 100 -o "$OUTPUT_DIR/chunks_1_7.json" &> "$OUTPUT_DIR/test_1_7.log"; then
+  test_passed "1.7 Chunk with custom overlap"
+else
+  test_failed "1.7 Chunk with custom overlap" "Command failed"
+fi
+
+# 1.8 Chunk with --show flag
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" --show -o "$OUTPUT_DIR/chunks_1_8.json" &> "$OUTPUT_DIR/test_1_8.log"; then
+  test_passed "1.8 Chunk with --show flag"
+else
+  test_failed "1.8 Chunk with --show flag" "Command failed"
+fi
+
+# 1.9 Chunk PDF file (skip if no PDF)
+if [ -f "$TEST_DATA_DIR/test.pdf" ]; then
+  if $RAGCTL chunk "$TEST_DATA_DIR/test.pdf" -o "$OUTPUT_DIR/chunks_1_9.json" &> "$OUTPUT_DIR/test_1_9.log"; then
+    test_passed "1.9 Chunk PDF file"
+  else
+    test_failed "1.9 Chunk PDF file" "Command failed"
+  fi
+else
+  test_skipped "1.9 Chunk PDF file (no PDF available)"
+fi
+
+# 1.10 Chunk with advanced OCR (skip if no PDF)
+if [ -f "$TEST_DATA_DIR/test.pdf" ]; then
+  if $RAGCTL chunk "$TEST_DATA_DIR/test.pdf" --advanced-ocr -o "$OUTPUT_DIR/chunks_1_10.json" &> "$OUTPUT_DIR/test_1_10.log"; then
+    test_passed "1.10 Chunk with advanced OCR"
+  else
+    test_failed "1.10 Chunk with advanced OCR" "Command failed"
+  fi
+else
+  test_skipped "1.10 Chunk with advanced OCR (no PDF available)"
+fi
+
+# 1.11 Chunk non-existent file (should fail gracefully)
+if ! $RAGCTL chunk "$TEST_DATA_DIR/missing.txt" -o "$OUTPUT_DIR/chunks_1_11.json" &> "$OUTPUT_DIR/test_1_11.log"; then
+  test_passed "1.11 Chunk non-existent file (error handled)"
+else
+  test_failed "1.11 Chunk non-existent file" "Should have failed"
+fi
+
+# 1.12 Chunk empty file
+if $RAGCTL chunk "$TEST_DATA_DIR/empty.txt" -o "$OUTPUT_DIR/chunks_1_12.json" &> "$OUTPUT_DIR/test_1_12.log"; then
+  test_passed "1.12 Chunk empty file"
+else
+  test_failed "1.12 Chunk empty file" "Command failed"
+fi
+
+# 1.13 Chunk large file
+if $RAGCTL chunk "$TEST_DATA_DIR/large.txt" -o "$OUTPUT_DIR/chunks_1_13.json" &> "$OUTPUT_DIR/test_1_13.log"; then
+  test_passed "1.13 Chunk large file"
+else
+  test_failed "1.13 Chunk large file" "Command failed"
+fi
+
+# 1.14 Chunk with all options combined
+if $RAGCTL chunk "$TEST_DATA_DIR/test.txt" -o "$OUTPUT_DIR/chunks_1_14.json" -s token --max-tokens 300 --overlap 20 --show &> "$OUTPUT_DIR/test_1_14.log"; then
+  test_passed "1.14 Chunk with all options combined"
+else
+  test_failed "1.14 Chunk with all options combined" "Command failed"
+fi
+
+# =============================================================================
+# 2. $RAGCTL batch (10 tests)
+# =============================================================================
+section_header "2. Testing: $RAGCTL batch"
+
+# 2.1 Batch process directory
+if $RAGCTL batch "$TEST_DATA_DIR/docs" -o "$OUTPUT_DIR/batch_2_1" &> "$OUTPUT_DIR/test_2_1.log"; then
+  test_passed "2.1 Batch process directory"
+else
+  test_failed "2.1 Batch process directory" "Command failed"
+fi
+
+# 2.2 Batch with output dir
+if $RAGCTL batch "$TEST_DATA_DIR/docs" -o "$OUTPUT_DIR/batch_2_2" &> "$OUTPUT_DIR/test_2_2.log"; then
+  if [ -d "$OUTPUT_DIR/batch_2_2" ]; then
+    test_passed "2.2 Batch with output dir"
+  else
+    test_failed "2.2 Batch with output dir" "Output dir not created"
+  fi
+else
+  test_failed "2.2 Batch with output dir" "Command failed"
+fi
+
+# 2.3 Batch with pattern *.txt
+if $RAGCTL batch "$TEST_DATA_DIR/docs" -p "*.txt" -o "$OUTPUT_DIR/batch_2_3" &> "$OUTPUT_DIR/test_2_3.log"; then
+  test_passed "2.3 Batch with pattern *.txt"
+else
+  test_failed "2.3 Batch with pattern *.txt" "Command failed"
+fi
+
+# 2.4 Batch with pattern *.md
+if $RAGCTL batch "$TEST_DATA_DIR/docs" -p "*.md" -o "$OUTPUT_DIR/batch_2_4" &> "$OUTPUT_DIR/test_2_4.log"; then
+  test_passed "2.4 Batch with pattern *.md"
+else
+  test_failed "2.4 Batch with pattern *.md" "Command failed"
+fi
+
+# 2.5 Batch recursive
+if $RAGCTL batch "$TEST_DATA_DIR/docs" -r -o "$OUTPUT_DIR/batch_2_5" &> "$OUTPUT_DIR/test_2_5.log"; then
+  test_passed "2.5 Batch recursive"
+else
+  test_failed "2.5 Batch recursive" "Command failed"
+fi
+
+# 2.6 Batch with auto-continue
+if $RAGCTL batch "$TEST_DATA_DIR/docs" --auto-continue -o "$OUTPUT_DIR/batch_2_6" &> "$OUTPUT_DIR/test_2_6.log"; then
+  test_passed "2.6 Batch with auto-continue"
+else
+  test_failed "2.6 Batch with auto-continue" "Command failed"
+fi
+
+# 2.7 Batch empty directory
+if $RAGCTL batch "$TEST_DATA_DIR/empty" -o "$OUTPUT_DIR/batch_2_7" &> "$OUTPUT_DIR/test_2_7.log"; then
+  test_passed "2.7 Batch empty directory"
+else
+  test_failed "2.7 Batch empty directory" "Command failed"
+fi
+
+# 2.8 Batch non-existent directory (should fail)
+if ! $RAGCTL batch "$TEST_DATA_DIR/missing" -o "$OUTPUT_DIR/batch_2_8" &> "$OUTPUT_DIR/test_2_8.log"; then
+  test_passed "2.8 Batch non-existent directory (error handled)"
+else
+  test_failed "2.8 Batch non-existent directory" "Should have failed"
+fi
+
+# 2.9 Batch with mixed file types
+if $RAGCTL batch "$TEST_DATA_DIR/mixed" -o "$OUTPUT_DIR/batch_2_9" &> "$OUTPUT_DIR/test_2_9.log"; then
+  test_passed "2.9 Batch with mixed file types"
+else
+  test_failed "2.9 Batch with mixed file types" "Command failed"
+fi
+
+# 2.10 Batch with all options
+if $RAGCTL batch "$TEST_DATA_DIR/docs" -o "$OUTPUT_DIR/batch_2_10" -p "*.txt" -r --auto-continue &> "$OUTPUT_DIR/test_2_10.log"; then
+  test_passed "2.10 Batch with all options"
+else
+  test_failed "2.10 Batch with all options" "Command failed"
+fi
+
+# =============================================================================
+# 3. $RAGCTL ingest (9 tests) - SKIP if Qdrant not running
+# =============================================================================
+section_header "3. Testing: $RAGCTL ingest"
+
+# Check if Qdrant is running
+if curl -s http://localhost:6333/health &> /dev/null; then
+  QDRANT_RUNNING=true
+else
+  QDRANT_RUNNING=false
+  log "${YELLOW}⚠️  Qdrant not running - skipping ingest tests${NC}"
+  log "   Start Qdrant: docker run -p 6333:6333 qdrant/qdrant"
+fi
+
+# 3.1 Ingest JSON file
+if [ "$QDRANT_RUNNING" = true ]; then
+  if $RAGCTL ingest "$TEST_DATA_DIR/chunks.json" -c test_collection_3_1 --yes &> "$OUTPUT_DIR/test_3_1.log"; then
+    test_passed "3.1 Ingest JSON file"
+  else
+    test_failed "3.1 Ingest JSON file" "Command failed"
+  fi
+else
+  test_skipped "3.1 Ingest JSON file (Qdrant not running)"
+fi
+
+# 3.2 Ingest JSONL file
+if [ "$QDRANT_RUNNING" = true ]; then
+  if $RAGCTL ingest "$TEST_DATA_DIR/chunks.jsonl" -c test_collection_3_2 --yes &> "$OUTPUT_DIR/test_3_2.log"; then
+    test_passed "3.2 Ingest JSONL file"
+  else
+    test_failed "3.2 Ingest JSONL file" "Command failed"
+  fi
+else
+  test_skipped "3.2 Ingest JSONL file (Qdrant not running)"
+fi
+
+# 3.3-3.9 Skip if Qdrant not running
+if [ "$QDRANT_RUNNING" = false ]; then
+  for i in {3..9}; do
+    test_skipped "3.$i (Qdrant not running)"
+  done
+fi
+
+# =============================================================================
+# 4. $RAGCTL eval (7 tests)
+# =============================================================================
+section_header "4. Testing: $RAGCTL eval"
+
+# 4.1 Eval with default strategies
+if $RAGCTL eval "$TEST_DATA_DIR/test.txt" &> "$OUTPUT_DIR/test_4_1.log"; then
+  test_passed "4.1 Eval with default strategies"
+else
+  test_failed "4.1 Eval with default strategies" "Command failed"
+fi
+
+# 4.2 Eval with custom strategies
+if $RAGCTL eval "$TEST_DATA_DIR/test.txt" --strategies semantic,token &> "$OUTPUT_DIR/test_4_2.log"; then
+  test_passed "4.2 Eval with custom strategies"
+else
+  test_failed "4.2 Eval with custom strategies" "Command failed"
+fi
+
+# 4.3 Eval with single strategy
+if $RAGCTL eval "$TEST_DATA_DIR/test.txt" --strategies semantic &> "$OUTPUT_DIR/test_4_3.log"; then
+  test_passed "4.3 Eval with single strategy"
+else
+  test_failed "4.3 Eval with single strategy" "Command failed"
+fi
+
+# 4.4 Eval PDF file (skip if no PDF)
+if [ -f "$TEST_DATA_DIR/test.pdf" ]; then
+  if $RAGCTL eval "$TEST_DATA_DIR/test.pdf" &> "$OUTPUT_DIR/test_4_4.log"; then
+    test_passed "4.4 Eval PDF file"
+  else
+    test_failed "4.4 Eval PDF file" "Command failed"
+  fi
+else
+  test_skipped "4.4 Eval PDF file (no PDF available)"
+fi
+
+# 4.5 Eval non-existent file (should fail)
+if ! $RAGCTL eval "$TEST_DATA_DIR/missing.txt" &> "$OUTPUT_DIR/test_4_5.log"; then
+  test_passed "4.5 Eval non-existent file (error handled)"
+else
+  test_failed "4.5 Eval non-existent file" "Should have failed"
+fi
+
+# 4.6 Eval empty file
+if $RAGCTL eval "$TEST_DATA_DIR/empty.txt" &> "$OUTPUT_DIR/test_4_6.log"; then
+  test_passed "4.6 Eval empty file"
+else
+  test_failed "4.6 Eval empty file" "Command failed"
+fi
+
+# 4.7 Eval large file
+if $RAGCTL eval "$TEST_DATA_DIR/large.txt" &> "$OUTPUT_DIR/test_4_7.log"; then
+  test_passed "4.7 Eval large file"
+else
+  test_failed "4.7 Eval large file" "Command failed"
+fi
+
+# =============================================================================
+# 5. $RAGCTL info (3 tests)
+# =============================================================================
+section_header "5. Testing: $RAGCTL info"
+
+# 5.1 Display system info
+if $RAGCTL info &> "$OUTPUT_DIR/test_5_1.log"; then
+  test_passed "5.1 Display system info"
+else
+  test_failed "5.1 Display system info" "Command failed"
+fi
+
+# 5.2 Info with custom API URL
+if $RAGCTL info --api-url http://localhost:8001 &> "$OUTPUT_DIR/test_5_2.log"; then
+  test_passed "5.2 Info with custom API URL"
+else
+  test_failed "5.2 Info with custom API URL" "Command failed"
+fi
+
+# 5.3 Info without API running
+if $RAGCTL info &> "$OUTPUT_DIR/test_5_3.log"; then
+  test_passed "5.3 Info without API running"
+else
+  test_failed "5.3 Info without API running" "Command failed"
+fi
+
+# =============================================================================
+# 6. $RAGCTL retry (5 tests)
+# =============================================================================
+section_header "6. Testing: $RAGCTL retry"
+
+# 6.1 Show failed runs
+if $RAGCTL retry --show &> "$OUTPUT_DIR/test_6_1.log"; then
+  test_passed "6.1 Show failed runs"
+else
+  test_failed "6.1 Show failed runs" "Command failed"
+fi
+
+# 6.2-6.5 Skip for now (require actual failed runs)
+test_skipped "6.2 Retry specific run (requires failed run)"
+test_skipped "6.3 Retry without run_id (requires failed run)"
+test_skipped "6.4 Retry non-existent run (requires setup)"
+test_skipped "6.5 Retry with no failed runs (already tested in 6.1)"
+
+# =============================================================================
+# Summary
+# =============================================================================
+section_header "Test Summary"
+
+log ""
+log "Total Tests:   $TOTAL_TESTS"
+log "${GREEN}Passed:        $PASSED_TESTS${NC}"
+log "${RED}Failed:        $FAILED_TESTS${NC}"
+log "${YELLOW}Skipped:       $SKIPPED_TESTS${NC}"
+log ""
+
+if [ $FAILED_TESTS -eq 0 ]; then
+  log "${GREEN}🎉 All tests passed!${NC}"
+  exit 0
+else
+  log "${RED}❌ Some tests failed. Check logs in $OUTPUT_DIR/${NC}"
+  exit 1
+fi

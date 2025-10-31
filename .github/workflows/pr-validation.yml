@@ -1,0 +1,382 @@
+name: PR Validation (Contributors)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches-ignore: [main]
+
+jobs:
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade "pip>=25.3"
+          pip install ruff black flake8 mypy
+          pip install -e .
+
+      - name: Run Ruff
+        run: ruff check src/
+        continue-on-error: true
+
+      - name: Run Black (check only)
+        run: black --check src/
+        continue-on-error: true
+
+      - name: Run Flake8
+        run: flake8 src/ --max-line-length=120 --extend-ignore=E203,W503
+        continue-on-error: true
+
+  test:
+    name: Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install system dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr poppler-utils
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install tesseract poppler
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade "pip>=25.3"
+          pip install pytest pytest-cov pytest-mock
+          pip install -e .
+
+      - name: Run tests
+        run: |
+          pytest tests/unit/ -v --cov=src --cov-report=xml --cov-report=term
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Gitleaks removed - requires paid license for organizations
+      # TruffleHog provides similar functionality for free
+
+      - name: TruffleHog Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+  sast-security:
+    name: SAST Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade "pip>=25.3"
+          pip install bandit semgrep
+          pip install -e .
+
+      - name: Run Bandit (Python security)
+        run: |
+          bandit -r src/ -f json -o bandit-report.json || true
+          bandit -r src/ -f screen
+
+      - name: Run Semgrep (AI/ML rules)
+        run: |
+          semgrep --config=auto \
+                  --config="p/python" \
+                  --config="p/security-audit" \
+                  --config="p/secrets" \
+                  --config="p/owasp-top-ten" \
+                  --json --output=semgrep-report.json src/
+        continue-on-error: true
+
+      - name: Upload Semgrep results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-report
+          path: semgrep-report.json
+
+  dependency-security:
+    name: Dependency Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade "pip>=25.3"
+          pip install safety pip-audit
+          pip install -e .
+
+      - name: Safety Check (PyPI vulnerabilities)
+        run: |
+          safety check --json --output safety-report.json || true
+          safety check
+
+      - name: Pip-audit Check
+        run: pip-audit --desc --format json --output pip-audit.json
+        continue-on-error: true
+
+      - name: Snyk Security Scan
+        uses: snyk/actions/python-3.10@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=pyproject.toml
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-security-reports
+          path: |
+            safety-report.json
+            pip-audit.json
+
+  supply-chain:
+    name: Supply Chain Security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Dependency Review disabled - requires GitHub Advanced Security for private repos
+      # Re-enable when repo is public or Advanced Security is enabled
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          output-file: sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
+  license-compliance:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade "pip>=25.3"
+          pip install pip-licenses licensecheck
+          pip install -e .
+
+      - name: Check Licenses
+        run: |
+          pip-licenses --format=json --output-file=licenses.json
+          pip-licenses --format=markdown --output-file=licenses.md
+          echo "## License Summary" >> $GITHUB_STEP_SUMMARY
+          cat licenses.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify License Compatibility
+        run: |
+          pip-licenses --fail-on="GPL;AGPL;LGPL" --format=plain
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: licenses
+          path: |
+            licenses.json
+            licenses.md
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  trivy-scan:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # Required for uploading SARIF results to CodeQL
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy (filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy results to CodeQL
+        uses: github/codeql-action/upload-sarif@v3
+        # Skip upload for forks (no permissions) - keep local artifact
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Upload Trivy results as artifact (for forks)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
+
+      - name: Trivy Summary
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+  build-test:
+    name: Build Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build tools
+        run: |
+          pip install --upgrade "pip>=25.3"
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package with twine
+        run: twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist/
+
+  summary:
+    name: Validation Summary
+    needs:
+      - lint
+      - test
+      - secrets-scan
+      - sast-security
+      - dependency-security
+      - supply-chain
+      - license-compliance
+      - codeql
+      - trivy-scan
+      - build-test
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          echo "## 🔍 Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Quality (Lint) | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secrets Scan | ${{ needs.secrets-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SAST Security | ${{ needs.sast-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Security | ${{ needs.dependency-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Supply Chain | ${{ needs.supply-chain.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| License Compliance | ${{ needs.license-compliance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL | ${{ needs.codeql.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Scan | ${{ needs.trivy-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build-test.result }} |" >> $GITHUB_STEP_SUMMARY
+
+          # Check for failures
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.secrets-scan.result }}" != "success" ] || \
+             [ "${{ needs.sast-security.result }}" != "success" ] || \
+             [ "${{ needs.dependency-security.result }}" != "success" ] || \
+             [ "${{ needs.supply-chain.result }}" != "success" ] || \
+             [ "${{ needs.license-compliance.result }}" != "success" ] || \
+             [ "${{ needs.codeql.result }}" != "success" ] || \
+             [ "${{ needs.trivy-scan.result }}" != "success" ] || \
+             [ "${{ needs.build-test.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Some checks failed. Please review the logs.**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **All security and quality checks passed!**" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,256 @@
+"""Batch command for Atlas-RAG CLI."""
+import json
+from pathlib import Path
+from typing import Optional
+from typing_extensions import Annotated
+
+import typer
+
+from src.core.chunk.chunker import chunk_document
+from src.core.cli.commands.chunk import ChunkStrategy, Document, _load_document_universal
+from src.core.cli.utils.display import (
+    console,
+    print_success,
+    print_error,
+    print_warning,
+    print_info,
+    create_batch_progress,
+    display_stats
+)
+from src.core.cli.utils.validation import validate_directory_exists, validate_output_path
+from src.core.cli.utils.output import save_chunks, detect_format_from_extension
+
+
+def batch_command(
+    directory: Annotated[
+        Path,
+        typer.Argument(
+            help="Directory containing files to process",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+        )
+    ],
+    pattern: Annotated[
+        str,
+        typer.Option(
+            "--pattern", "-p",
+            help="File pattern to match (e.g., '*.txt', '*.md')"
+        )
+    ] = "*.txt",
+    strategy: Annotated[
+        ChunkStrategy,
+        typer.Option(
+            "--strategy", "-s",
+            help="Chunking strategy to use"
+        )
+    ] = ChunkStrategy.semantic,
+    max_tokens: Annotated[
+        int,
+        typer.Option(
+            "--max-tokens", "-m",
+            help="Maximum tokens per chunk",
+            min=50,
+            max=2000
+        )
+    ] = 400,
+    overlap: Annotated[
+        int,
+        typer.Option(
+            "--overlap", "-ol",
+            help="Token overlap between chunks",
+            min=0,
+            max=500
+        )
+    ] = 50,
+    output: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--output", "-o",
+            help="Output JSON file path (all chunks combined)"
+        )
+    ] = None,
+    recursive: Annotated[
+        bool,
+        typer.Option(
+            "--recursive", "-r",
+            help="Process subdirectories recursively"
+        )
+    ] = False,
+    advanced_ocr: Annotated[
+        bool,
+        typer.Option(
+            "--advanced-ocr",
+            help="Use intelligent OCR routing for scanned PDFs (auto-selects Qwen-VL, Nougat, or classic OCR)"
+        )
+    ] = False,
+) -> None:
+    """
+    Process multiple files in batch mode.
+
+    This command discovers all files matching the pattern in the specified
+    directory and chunks them using the same strategy.
+
+    \b
+    Examples:
+        # Process all .txt files in a directory
+        atlas-rag batch ./documents
+
+        # Process all markdown files recursively
+        atlas-rag batch ./docs --pattern "*.md" --recursive
+
+        # Process and save all chunks to JSON
+        atlas-rag batch ./data --pattern "*.txt" -o all_chunks.json
+
+        # Process with custom chunking parameters
+        atlas-rag batch ./docs --strategy sentence --max-tokens 300
+    """
+    # Validate directory
+    try:
+        validate_directory_exists(directory)
+    except typer.BadParameter as e:
+        print_error(str(e))
+        raise typer.Exit(code=1)
+
+    # Validate output path
+    if output:
+        try:
+            validate_output_path(output)
+        except typer.BadParameter as e:
+            print_error(str(e))
+            raise typer.Exit(code=1)
+
+    # Find files
+    if recursive:
+        files = list(directory.rglob(pattern))
+    else:
+        files = list(directory.glob(pattern))
+
+    if not files:
+        print_warning(f"No files found matching pattern: {pattern}")
+        console.print(f"  Directory: {directory}")
+        console.print(f"  Recursive: {recursive}")
+        raise typer.Exit(code=0)
+
+    console.print(f"\n[bold]Processing {len(files)} files...[/bold]")
+    console.print(f"  Pattern: {pattern}")
+    console.print(f"  Strategy: {strategy.value}")
+    console.print(f"  Max tokens: {max_tokens}")
+    if advanced_ocr:
+        console.print(f"  Advanced OCR: [bold green]Enabled[/bold green] (for PDFs)\n")
+    else:
+        console.print("")
+
+    all_chunks = []
+    processed_count = 0
+    failed_count = 0
+    failed_files = []
+
+    # Initialize OCR router if needed (lazy loading)
+    ocr_router = None
+    if advanced_ocr:
+        try:
+            from src.workflows.router.ocr_router import OCRRouter, OCRRouterConfig
+            ocr_router = OCRRouter(OCRRouterConfig())
+        except ImportError as e:
+            print_warning(f"Advanced OCR dependencies not available: {e}")
+            print_warning("PDFs will be processed with standard text extraction")
+        except Exception as e:
+            print_warning(f"Failed to initialize OCR router: {e}")
+            print_warning("PDFs will be processed with standard text extraction")
+
+    # Process files with progress bar
+    with create_batch_progress() as progress:
+        task = progress.add_task("Processing...", total=len(files))
+
+        for file_path in files:
+            progress.update(task, description=f"Processing {file_path.name}")
+
+            try:
+                # Define formats that support advanced OCR
+                ADVANCED_OCR_FORMATS = {'.pdf', '.png', '.jpg', '.jpeg', '.tiff'}
+
+                # Read file (with advanced OCR for documents/images if requested)
+                if advanced_ocr and ocr_router and file_path.suffix.lower() in ADVANCED_OCR_FORMATS:
+                    # Use intelligent OCR router for PDFs and images
+                    result = ocr_router.process_document(file_path)
+                    text = result['extracted_text']
+
+                    if not text:
+                        raise ValueError(f"No text extracted: {result.get('errors', [])}")
+                else:
+                    # Universal document loading (PDF, Word, HTML, etc.)
+                    # Disable status to avoid conflict with progress bar
+                    text = _load_document_universal(file_path, print_info, use_status=False)
+
+                # Create document
+                doc = Document(
+                    text=text,
+                    metadata={"source": str(file_path), "size": len(text)},
+                    source_path=str(file_path)
+                )
+
+                # Chunk document
+                chunks = chunk_document(
+                    doc,
+                    strategy=strategy.value,
+                    max_tokens=max_tokens,
+                    overlap=overlap
+                )
+
+                # Convert chunks to dict for JSON serialization
+                chunks_data = [
+                    {
+                        "id": chunk.id,
+                        "text": chunk.text,
+                        "metadata": {**chunk.metadata, "source_file": str(file_path)}
+                    }
+                    for chunk in chunks
+                ]
+
+                all_chunks.extend(chunks_data)
+                processed_count += 1
+
+            except Exception as e:
+                failed_count += 1
+                failed_files.append((file_path, str(e)))
+                progress.console.print(f"[red]Error processing {file_path}: {e}[/red]")
+
+            progress.advance(task)
+
+    # Display results
+    console.print("\n")
+    print_success("Batch processing complete")
+
+    stats = {
+        "Files processed": f"{processed_count}/{len(files)}",
+        "Failed": failed_count,
+        "Total chunks": len(all_chunks),
+        "Strategy": strategy.value,
+    }
+    display_stats(stats)
+
+    # Show failed files if any
+    if failed_files:
+        console.print("\n[yellow]Failed files:[/yellow]")
+        for file_path, error in failed_files:
+            console.print(f"  [red]✗[/red] {file_path.name}: {error}")
+
+    # Save to file if requested
+    if output and all_chunks:
+        try:
+            # Auto-detect format from extension
+            output_format = detect_format_from_extension(output)
+
+            with console.status(f"[bold green]Saving to {output.name} ({output_format.value})..."):
+                save_chunks(all_chunks, output, output_format)
+
+            print_success(f"All chunks saved to [bold]{output}[/bold] ({output_format.value} format)")
+        except Exception as e:
+            print_error(f"Error saving output: {e}")
+            raise typer.Exit(code=1)
+
+    # Exit with error code if any files failed
+    if failed_count > 0:
+        raise typer.Exit(code=1)

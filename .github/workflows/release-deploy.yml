@@ -1,0 +1,195 @@
+name: Release & Deploy (Admin)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      pypi_environment:
+        description: 'PyPI environment (testpypi or pypi)'
+        required: true
+        default: 'testpypi'
+        type: choice
+        options:
+          - testpypi
+          - pypi
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  validate:
+    name: Pre-release Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade "pip>=25.3"
+          pip install pytest pytest-cov bandit safety
+          pip install -e .
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=src
+
+      - name: Security scan
+        run: |
+          bandit -r src/ -f json -o bandit-report.json
+          safety check --json
+        continue-on-error: true
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+  build:
+    name: Build Distribution
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build tools
+        run: |
+          pip install --upgrade "pip>=25.3"
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Verify package
+        run: |
+          twine check dist/*
+          ls -lh dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.pypi_environment == 'testpypi'
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/ragctl/
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.pypi_environment == 'pypi')
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ragctl/
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build, publish-pypi]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## RAG Studio v${{ steps.get_version.outputs.VERSION }}
+
+            ### Installation
+            ```bash
+            pip install --upgrade ragctl
+            ```
+
+            ### What's Changed
+            See [CHANGELOG.md](https://github.com/horiz-data/ragstudio/blob/main/CHANGELOG.md) for details.
+
+            ### Verify Installation
+            ```bash
+            ragctl --version
+            # RAG Studio (ragctl) version ${{ steps.get_version.outputs.VERSION }}
+            ```
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          draft: false
+          prerelease: false
+
+  post-deploy:
+    name: Post-deployment Tests
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for PyPI propagation
+        run: sleep 60
+
+      - name: Test installation from PyPI
+        run: |
+          pip install ragctl --upgrade
+          ragctl --version
+          ragctl info
+
+      - name: Notify success
+        run: |
+          echo "✅ ragctl successfully published to PyPI!"
+          echo "🎉 Users can now: pip install --upgrade ragctl"

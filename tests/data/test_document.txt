@@ -1,0 +1,58 @@
+# Manuel d'Installation
+
+## Prérequis
+
+- Python 3.8+
+- PostgreSQL 12+
+- Redis 6+
+
+## Installation
+
+### Étape 1: Cloner le repository
+```bash
+git clone https://github.com/company/project.git
+cd project
+```
+
+### Étape 2: Installer les dépendances
+```bash
+pip install -r requirements.txt
+```
+
+### Étape 3: Configuration
+Copier le fichier de configuration:
+```bash
+cp config.example.yml config.yml
+```
+
+## Configuration de la base de données
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Host | localhost |
+| Port | 5432 |
+| Database | myapp |
+| User | admin |
+
+## Démarrage
+
+```bash
+python main.py
+```
+
+## Fonctionnalités
+
+### Gestion des Utilisateurs
+- Création de comptes
+- Gestion des rôles
+- Authentification sécurisée
+
+### Workflow Management
+- Définition de processus
+- Automatisation des tâches
+- Suivi des étapes
+
+### Reporting
+- Tableaux de bord interactifs
+- Export de données
+- Rapports personnalisés
