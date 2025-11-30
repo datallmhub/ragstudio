@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Discussions
+    url: https://github.com/datallmhub/ragstudio/discussions
+    about: Please ask and answer questions here.
+  - name: Documentation
+    url: https://github.com/datallmhub/ragstudio/tree/main/docs
+    about: Read the documentation before opening an issue.

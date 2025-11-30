@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Project name**: Atlas-RAG → **RAG Studio**
 - **Package name**: atlas-rag → **ragctl** (follows kubectl/systemctl convention)
 - **CLI command**: `atlas-rag` → `ragctl`
-- **Repository**: horiz-data/atlas-rag → horiz-data/ragstudio
+- **Repository**: horiz-data/ragstudio → datallmhub/ragstudio
 
 ### ⚡ Performance Improvements
 

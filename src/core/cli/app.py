@@ -76,11 +76,12 @@ def main(
 
     \b
     Documentation:
-        https://github.com/horiz-data/ragstudio
+        https://github.com/datallmhub/ragstudio
+        Documentation: https://datallmhub.github.io/ragstudio
 
     \b
     Support:
-        Report issues at: https://github.com/horiz-data/ragstudio/issues
+        Report issues at: https://github.com/datallmhub/ragstudio/issues
     """
     pass
 

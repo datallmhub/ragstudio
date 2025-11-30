@@ -4,12 +4,13 @@
 
 Process documents, extract text with advanced OCR, chunk intelligently, and prepare data for RAG systems - all from the command line with `ragctl`.
 
-[![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)](https://github.com/horiz-data/ragstudio)
+[![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)](https://github.com/datallmhub/ragstudio)
 [![PyPI](https://img.shields.io/badge/pypi-ragctl-blue.svg)](https://pypi.org/project/ragctl/)
-[![Status](https://img.shields.io/badge/status-beta-yellow.svg)](https://github.com/horiz-data/ragstudio)
-[![Tests](https://img.shields.io/badge/tests-496%20passed-success.svg)](https://github.com/horiz-data/ragstudio)
-[![Coverage](https://img.shields.io/badge/coverage-41%25-yellow.svg)](https://github.com/horiz-data/ragstudio)
+[![Status](https://img.shields.io/badge/status-beta-yellow.svg)](https://github.com/datallmhub/ragstudio)
+[![Tests](https://img.shields.io/badge/tests-496%20passed-success.svg)](https://github.com/datallmhub/ragstudio)
+[![Coverage](https://img.shields.io/badge/coverage-41%25-yellow.svg)](https://github.com/datallmhub/ragstudio)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
 ---
@@ -89,7 +90,7 @@ ragctl --version
 
 ```bash
 # Clone repository
-git clone git@github.com:horiz-data/ragstudio.git
+git clone git@github.com:datallmhub/ragstudio.git
 cd ragstudio
 
 # Install with pip
@@ -364,15 +365,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines (coming soon).
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ---
 
 ## 📧 Support
 
 - **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/horiz-data/ragstudio/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/horiz-data/ragstudio/discussions)
+- **Issues**: [GitHub Issues](https://github.com/datallmhub/ragstudio/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/datallmhub/ragstudio/discussions)
 
 ---
 

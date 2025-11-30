@@ -119,11 +119,11 @@ llm = [
 
 
 [project.urls]
-Homepage = "https://github.com/horiz-data/ragstudio"
-Documentation = "https://github.com/horiz-data/ragstudio/tree/main/docs"
-Repository = "https://github.com/horiz-data/ragstudio"
-Issues = "https://github.com/horiz-data/ragstudio/issues"
-Changelog = "https://github.com/horiz-data/ragstudio/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/datallmhub/ragstudio"
+Documentation = "https://github.com/datallmhub/ragstudio/tree/main/docs"
+Repository = "https://github.com/datallmhub/ragstudio"
+Issues = "https://github.com/datallmhub/ragstudio/issues"
+Changelog = "https://github.com/datallmhub/ragstudio/blob/main/CHANGELOG.md"
 
 [project.scripts]
 ragctl = "src.core.cli.main:main"

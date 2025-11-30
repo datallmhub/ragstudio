@@ -40,8 +40,8 @@ Welcome to the RAG Studio (`ragctl`) documentation!
 
 ## 🆘 Need Help?
 
-- **Questions**: Open a [GitHub Discussion](https://github.com/horiz-data/ragstudio/discussions)
-- **Bugs**: Create a [GitHub Issue](https://github.com/horiz-data/ragstudio/issues)
+- **Questions**: Open a [GitHub Discussion](https://github.com/datallmhub/ragstudio/discussions)
+- **Bugs**: Create a [GitHub Issue](https://github.com/datallmhub/ragstudio/issues)
 - **Contributions**: See [CONTRIBUTING.md](../CONTRIBUTING.md)
 
 ---

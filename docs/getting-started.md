@@ -13,7 +13,7 @@ pip install ragctl
 ### From Source
 
 ```bash
-git clone git@github.com:horiz-data/ragstudio.git
+git clone git@github.com:datallmhub/ragstudio.git
 cd ragstudio
 pip install -e .
 ```
@@ -147,8 +147,8 @@ docker run -p 6333:6333 qdrant/qdrant
 ## Support
 
 - **Documentation**: [docs/](.)
-- **Issues**: [GitHub Issues](https://github.com/horiz-data/ragctl/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/horiz-data/ragctl/discussions)
+- **Issues**: [GitHub Issues](https://github.com/datallmhub/ragstudio/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/datallmhub/ragstudio/discussions)
 
 ---
 
