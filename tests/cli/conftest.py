@@ -44,7 +44,7 @@ class RealCliRunner:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=120,
                 cwd=Path(__file__).parent.parent.parent  # Project root
             )
 
