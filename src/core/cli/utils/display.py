@@ -1,14 +1,26 @@
 """Display utilities for CLI using Rich."""
+from typing import List, Dict, Any
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
-from typing import List, Dict, Any
 
 console = Console()
+_verbosity_level = 0
+_quiet_mode = False
+
+
+def set_verbosity(level: int = 0, quiet: bool = False) -> None:
+    """Configure display verbosity and quiet mode."""
+    global _verbosity_level, _quiet_mode, console
+    _verbosity_level = level
+    _quiet_mode = quiet
+    console = Console(quiet=quiet)
 
 
 def print_success(message: str) -> None:
     """Print success message."""
+    if _quiet_mode:
+        return
     console.print(f"[green]✓[/green] {message}")
 
 
@@ -19,11 +31,15 @@ def print_error(message: str) -> None:
 
 def print_warning(message: str) -> None:
     """Print warning message."""
+    if _quiet_mode:
+        return
     console.print(f"[yellow]⚠[/yellow] {message}")
 
 
 def print_info(message: str) -> None:
     """Print info message."""
+    if _quiet_mode:
+        return
     console.print(f"[cyan]ℹ[/cyan] {message}")
 
 
@@ -61,12 +77,15 @@ def create_batch_progress() -> Progress:
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
         TaskProgressColumn(),
-        console=console
+        console=console,
+        disable=_quiet_mode,
     )
 
 
 def display_stats(stats: Dict[str, Any]) -> None:
     """Display statistics in a formatted way."""
+    if _quiet_mode:
+        return
     table = Table(show_header=False, box=None)
     table.add_column("Metric", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
