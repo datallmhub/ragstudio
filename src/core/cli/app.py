@@ -2,7 +2,9 @@
 import warnings
 import typer
 from pathlib import Path
+from typing import Optional
 from typing_extensions import Annotated
+from src.core.cli.commands.chunk import ChunkStrategy
 
 # Suppress common warnings for better UX
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
@@ -123,17 +125,45 @@ def chunk(
 
 @app.command(name="batch", help="Process multiple files in batch mode")
 def batch(
-    input_dir: Path = typer.Argument(..., help="Input directory with files"),
-    output: Path = typer.Option(None, "--output", "-o", help="Output directory or file"),
+    directory: Path = typer.Argument(..., help="Input directory with files"),
     pattern: str = typer.Option("*", "--pattern", "-p", help="File pattern to match"),
+    strategy: ChunkStrategy = typer.Option(ChunkStrategy.semantic, "--strategy", "-s", help="Chunking strategy to use"),
+    max_tokens: int = typer.Option(400, "--max-tokens", "-m", help="Maximum tokens per chunk", min=50, max=2000),
+    overlap: int = typer.Option(50, "--overlap", "-ol", help="Token overlap between chunks", min=0, max=500),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory or file"),
+    single_file: bool = typer.Option(False, "--single-file", help="Combine all chunks into a single output file"),
     recursive: bool = typer.Option(False, "--recursive", "-r", help="Process recursively"),
-    auto_continue: bool = typer.Option(False, "--auto-continue", help="Continue on errors"),
+    advanced_ocr: bool = typer.Option(False, "--advanced-ocr", help="Use intelligent OCR routing for scanned PDFs"),
+    auto_continue: bool = typer.Option(False, "--auto-continue", help="Continue automatically on errors"),
+    auto_stop: bool = typer.Option(False, "--auto-stop", help="Stop on first error"),
+    auto_skip: bool = typer.Option(False, "--auto-skip", help="Skip failed files automatically"),
+    dry_run: bool = typer.Option(False, "--dry-run", "-n", help="List files without processing"),
+    save_history: bool = typer.Option(True, "--save-history/--no-history", help="Save run to history for retry capability"),
 ):
     """Process multiple files in batch mode."""
+    if auto_continue and auto_stop:
+        from src.core.cli.utils.display import print_error
+        print_error("Cannot use both --auto-continue and --auto-stop")
+        raise typer.Exit(code=1)
+
     from src.core.cli.commands.batch import batch_command
-    from src.core.cli.commands.chunk import ChunkStrategy
-    # Match signature: (directory, pattern, strategy, max_tokens, overlap, output, single_file, recursive, advanced_ocr, auto_continue, auto_stop)
-    return batch_command(input_dir, pattern, ChunkStrategy.semantic, 400, 50, output, False, recursive, False, auto_continue, False)
+    
+    return batch_command(
+        directory=directory,
+        pattern=pattern,
+        strategy=strategy,
+        max_tokens=max_tokens,
+        overlap=overlap,
+        output=output,
+        single_file=single_file,
+        recursive=recursive,
+        advanced_ocr=advanced_ocr,
+        auto_continue=auto_continue,
+        auto_stop=auto_stop,
+        auto_skip=auto_skip,
+        dry_run=dry_run,
+        save_history=save_history
+    )
 
 
 @app.command(name="ingest", help="Ingest chunks into Qdrant vector store")

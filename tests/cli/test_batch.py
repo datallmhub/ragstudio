@@ -138,3 +138,31 @@ class TestBatchCommand:
 
         assert result.exit_code == 0
         assert "300" in result.stdout
+
+    def test_batch_dry_run(self, cli_runner, sample_batch_files):
+        """Test batch processing dry-run mode."""
+        batch_dir, files = sample_batch_files
+
+        result = cli_runner.invoke(app, [
+            "batch", str(batch_dir),
+            "--dry-run"
+        ])
+
+        assert result.exit_code == 0
+        assert "Would process" in result.stdout
+        assert "Total:" in result.stdout
+
+    def test_batch_mutually_exclusive_flags(self, cli_runner, tmp_path):
+        """Test that --auto-continue and --auto-stop cannot be used together."""
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        
+        result = cli_runner.invoke(app, [
+            "batch", 
+            str(input_dir), 
+            "--auto-continue", 
+            "--auto-stop"
+        ])
+        
+        assert result.exit_code != 0
+        assert "Cannot use both --auto-continue and --auto-stop" in result.stdout
