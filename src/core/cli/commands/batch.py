@@ -6,6 +6,7 @@ from typing import Optional
 from typing_extensions import Annotated
 
 import typer
+import humanfriendly
 
 from src.core.chunk.chunker import chunk_document
 from src.core.cli.commands.chunk import ChunkStrategy, Document
@@ -137,6 +138,13 @@ def batch_command(
             help="Skip failed files automatically (non-interactive, for batch processing)"
         )
     ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run", "-n",
+            help="List files that would be processed without processing them"
+        )
+    ] = False,
     save_history: Annotated[
         bool,
         typer.Option(
@@ -260,6 +268,26 @@ def batch_command(
     except typer.BadParameter as e:
         print_error(str(e))
         raise typer.Exit(code=1)
+
+    # === DRY RUN ===
+    if dry_run:
+        console.print(f"Would process {len(files)} files:")
+        total_size = 0
+        sorted_files = sorted(files, key=lambda p: p.name)
+        
+        for i, file_path in enumerate(sorted_files):
+            try:
+                size = file_path.stat().st_size
+                total_size += size
+                formatted_size = humanfriendly.format_size(size)
+                
+                prefix = "└── " if i == len(sorted_files) - 1 else "├── "
+                console.print(f"  {prefix}{file_path.name} ({formatted_size})")
+            except Exception as e:
+                console.print(f"  ? {file_path.name} (error getting size: {e})")
+
+        console.print(f"Total: {len(files)} files, {humanfriendly.format_size(total_size)}")
+        raise typer.Exit(code=0)
 
     # Create pipeline manager with specified mode
     pipeline_manager = create_pipeline_manager(
